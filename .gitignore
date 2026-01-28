@@ -11,4 +11,4 @@ models/*.onnx
 # Python
 .venv/
 __pycache__/
-.DS_Store
+.DS_Storesatellite_test.jpg
