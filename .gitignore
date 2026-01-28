@@ -1,17 +1,14 @@
-# Python
-__pycache__/
-*.py[cod]
-.venv/
-
-# C++
+# C++ Build files
 build/
-*.o
 bin/
+*.o
+*.dylib
+edge_vit_inference
 
-# Models & Data (Too heavy for Git)
+# Models (trop lourds pour Git, on garde juste les scripts de génération)
 models/*.onnx
-models/*.pth
-data/
 
-# OS
+# Python
+.venv/
+__pycache__/
 .DS_Store
