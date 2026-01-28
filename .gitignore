@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# C++
+build/
+*.o
+bin/
+
+# Models & Data (Too heavy for Git)
+models/*.onnx
+models/*.pth
+data/
+
+# OS
+.DS_Store
