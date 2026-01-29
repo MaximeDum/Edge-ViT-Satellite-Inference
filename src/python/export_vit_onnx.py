@@ -1,43 +1,37 @@
 import torch
 import os
-from transformers import SegformerImageProcessor, SegformerForSemanticSegmentation
+from transformers import SegformerForSemanticSegmentation
 
+# 1. Utiliser le chemin absolu pour éviter la confusion avec le Hub
+# os.path.abspath convertit "./models/..." en "/Users/maximedumont/Projects/..."
+model_path = "segformer-finetuned-local/checkpoint-80/"
 
-def export_model():
-    # 1. Model selection (SegFormer is a ViT optimized for segmentation)
-    model_name = "nvidia/segformer-b0-finetuned-ade-512-512"
+if not os.path.exists(model_path):
+    raise FileNotFoundError(f"Le dossier n'existe pas : {model_path}")
 
-    print(f"Loading model: {model_name}...")
-    processor = SegformerImageProcessor.from_pretrained(model_name)
-    model = SegformerForSemanticSegmentation.from_pretrained(model_name)
-    model.eval()
+print(f"Chargement du modèle local depuis : {model_path}")
 
-    # 2. Prepare dummy input (1 sample, 3 channels, 512x512 pixels)
-    dummy_input = torch.randn(1, 3, 512, 512)
+# Chargement du modèle avec local_files_only pour forcer Python à ne pas aller sur Internet
+model = SegformerForSemanticSegmentation.from_pretrained(
+    model_path, local_files_only=True
+)
+model.eval()
 
-    # 3. Create output directory if it doesn't exist
-    output_dir = "./models"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+# 2. Dummy input (format standard SegFormer B0)
+dummy_input = torch.randn(1, 3, 512, 512)
 
-    output_path = os.path.join(output_dir, "segformer_vit.onnx")
+# 3. Export ONNX
+output_onnx = "segformer_satellite_v1.onnx"
+torch.onnx.export(
+    model,
+    dummy_input,
+    output_onnx,
+    export_params=True,
+    opset_version=14,
+    do_constant_folding=True,
+    input_names=["input"],
+    output_names=["output"],
+    dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
+)
 
-    # 4. Export to ONNX format
-    print("Exporting to ONNX...")
-    torch.onnx.export(
-        model,
-        dummy_input,
-        output_path,
-        export_params=True,
-        opset_version=18,  # Use 18 to avoid conversion errors
-        do_constant_folding=True,
-        input_names=["input"],
-        output_names=["output"],
-        dynamic_axes={"input": {0: "batch_size"}, "output": {0: "batch_size"}},
-    )
-
-    print(f"Success! Model saved at: {output_path}")
-
-
-if __name__ == "__main__":
-    export_model()
+print(f"Succès ! Ton fichier unique est prêt : {output_onnx}")
