@@ -1,10 +1,20 @@
 #include <iostream>
 #include <vector>
+#include <string>
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
-int main()
+int main(int argc, char *argv[])
 {
+    // 1. Vérification de l'argument
+    if (argc < 2)
+    {
+        std::cout << "Usage: ./edge_vit_inference <path_to_image>" << std::endl;
+        return -1;
+    }
+
+    std::string image_path = argv[1];
+
     try
     {
         Ort::Env env(ORT_LOGGING_LEVEL_WARNING, "ViT_Inference");
@@ -12,11 +22,11 @@ int main()
         const char *model_path = "models/segformer_vit.onnx";
         Ort::Session session(env, model_path, session_options);
 
-        // 1. Préparation de l'image
-        cv::Mat img = cv::imread("satellite_test.jpg");
+        // 2. Chargement de l'image passée en argument
+        cv::Mat img = cv::imread(image_path);
         if (img.empty())
         {
-            std::cerr << "Image non trouvée !" << std::endl;
+            std::cerr << "Erreur : Impossible de lire l'image : " << image_path << std::endl;
             return -1;
         }
 
@@ -37,7 +47,6 @@ int main()
             }
         }
 
-        // 2. Noms des entrées/sorties mis à jour
         const char *input_names[] = {"input"};
         const char *output_names[] = {"output"};
 
@@ -47,29 +56,24 @@ int main()
             memory_info, input_tensor_values.data(), input_tensor_values.size(), input_dims.data(), input_dims.size());
 
         // 3. Inférence
-        std::cout << "Lancement de l'inférence sur satellite_test.jpg..." << std::endl;
+        std::cout << "Inférence sur : " << image_path << "..." << std::endl;
         auto output_tensors = session.Run(Ort::RunOptions{nullptr}, input_names, &input_tensor, 1, output_names, 1);
 
-        // 4. Récupération et Post-processing
+        // 4. Post-processing et sauvegarde
         float *output_data = output_tensors[0].GetTensorMutableData<float>();
         auto output_shape = output_tensors[0].GetTensorTypeAndShapeInfo().GetShape();
 
-        // Création du masque (SegFormer sort Batch x Classes x H x W)
-        // Pour simplifier, on prend le premier canal (ou la classe dominante)
         int out_h = (int)output_shape[2];
         int out_w = (int)output_shape[3];
 
         cv::Mat mask(out_h, out_w, CV_32FC1, output_data);
-
-        // Normalisation pour visualisation (0-255)
         cv::Mat final_mask;
         cv::normalize(mask, final_mask, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-
-        // Redimensionner à la taille d'entrée pour la comparaison
         cv::resize(final_mask, final_mask, cv::Size(512, 512));
 
-        cv::imwrite("output_mask.png", final_mask);
-        std::cout << "Succès ! Masque généré : output_mask.png (" << out_h << "x" << out_w << ")" << std::endl;
+        std::string output_name = "mask_result.png";
+        cv::imwrite(output_name, final_mask);
+        std::cout << "Succès ! Masque sauvegardé sous : " << output_name << std::endl;
     }
     catch (const Ort::Exception &e)
     {
