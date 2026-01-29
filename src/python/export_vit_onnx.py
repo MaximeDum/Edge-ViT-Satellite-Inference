@@ -21,7 +21,7 @@ model.eval()
 dummy_input = torch.randn(1, 3, 512, 512)
 
 # 3. Export ONNX
-output_onnx = "segformer_satellite_v1.onnx"
+output_onnx = "/models/segformer_satellite_v1.onnx"
 torch.onnx.export(
     model,
     dummy_input,
